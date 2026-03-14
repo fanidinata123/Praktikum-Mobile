@@ -114,7 +114,7 @@ class ProfilePage extends StatelessWidget {
                   _infoCard(
                     icon: Icons.school_rounded,
                     label: 'Institusi',
-                    value: 'Politeknik Negeri',
+                    value: 'Universitas Airlangga',
                     color: const Color(0xFF667eea),
                   ),
                   _infoCard(

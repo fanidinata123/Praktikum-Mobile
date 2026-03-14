@@ -2,12 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trying_flutter/features/dosen/data/models/dosen_model.dart';
 import 'package:trying_flutter/features/dosen/data/repositories/dosen_repository.dart';
 
-// Repository Provider — membuat instance DosenRepository
-final dosenRepositoryProvider = Provider<DosenRepository>((ref) {
-  return DosenRepository();
-}); // Provider
+final dosenRepositoryProvider = Provider<DosenRepository>(
+  (ref) => DosenRepository(),
+);
 
-/// StateNotifier untuk mengelola state dosen
 class DosenNotifier extends StateNotifier<AsyncValue<List<DosenModel>>> {
   final DosenRepository _repository;
 
@@ -15,7 +13,6 @@ class DosenNotifier extends StateNotifier<AsyncValue<List<DosenModel>>> {
     loadDosenList();
   }
 
-  /// Load data dosen dalam bentuk list
   Future<void> loadDosenList() async {
     state = const AsyncValue.loading();
     try {
@@ -26,17 +23,10 @@ class DosenNotifier extends StateNotifier<AsyncValue<List<DosenModel>>> {
     }
   }
 
-  /// Refresh data dosen dalam bentuk list
-  Future<void> refresh() async {
-    await loadDosenList();
-  }
+  Future<void> refresh() async => await loadDosenList();
 }
 
-// Dosen Notifier Provider
 final dosenNotifierProvider = StateNotifierProvider.autoDispose<
-  DosenNotifier,
-  AsyncValue<List<DosenModel>>
->((ref) {
-  final repository = ref.watch(dosenRepositoryProvider);
-  return DosenNotifier(repository);
+    DosenNotifier, AsyncValue<List<DosenModel>>>((ref) {
+  return DosenNotifier(ref.watch(dosenRepositoryProvider));
 });

@@ -1,32 +1,39 @@
+import 'dart:convert';
 import 'package:trying_flutter/features/dosen/data/models/dosen_model.dart';
+import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
-/// Repository untuk mengambil data dosen
 class DosenRepository {
-  /// Mendapatkan daftar dosen
+  // ─── STEP 4: Mendapatkan daftar dosen menggunakan HTTP ──────────────────────
   Future<List<DosenModel>> getDosenList() async {
-    // Simulasi network delay
-    await Future.delayed(const Duration(seconds: 1));
+    final response = await http.get(
+      Uri.parse('https://jsonplaceholder.typicode.com/users'),
+      headers: {'Accept': 'application/json'},
+    );
 
-    // Data dummy dosen — bisa diganti dengan API call
-    return [
-      DosenModel(
-        nama: 'Anank Prasetyo',
-        nip: '123456789',
-        email: 'anank.prasetyo@example.com',
-        jurusan: 'Teknik Informatika',
-      ),
-      DosenModel(
-        nama: 'Rachman Sinatriya',
-        nip: '987654321',
-        email: 'rachman.sinatriya@example.com',
-        jurusan: 'Teknik Informatika',
-      ),
-      DosenModel(
-        nama: 'Alfian Sukma',
-        nip: '456789123',
-        email: 'alfian.sukma@example.com',
-        jurusan: 'Teknik Informatika',
-      ),
-    ];
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      print(data); // Debug: Tampilkan data yang sudah di-decode
+      return data.map((json) => DosenModel.fromJson(json)).toList();
+    } else {
+      print('Error: ${response.statusCode} - ${response.body}');
+      throw Exception('Gagal memuat data dosen: ${response.statusCode}');
+    }
+  }
+
+  // ─── STEP 7: Mendapatkan daftar dosen menggunakan DIO ───────────────────────
+  Future<List<DosenModel>> getDosenListDio() async {
+    final dio = Dio();
+    final response = await dio.get(
+      'https://jsonplaceholder.typicode.com/users',
+      options: Options(headers: {'Accept': 'application/json'}),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = response.data;
+      return data.map((json) => DosenModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Gagal memuat data dosen (dio): ${response.statusCode}');
+    }
   }
 }

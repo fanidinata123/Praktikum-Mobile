@@ -1,38 +1,36 @@
-/// Model data mahasiswa
+/// Model mahasiswa dari API jsonplaceholder/comments
 class MahasiswaModel {
-  final String nama;
-  final String nim;
+  final int id;
+  final int postId;
+  final String name;
   final String email;
-  final String jurusan;
-  final String angkatan;
-  final String status; // aktif / lulus / cuti
+  final String body;
 
   MahasiswaModel({
-    required this.nama,
-    required this.nim,
+    required this.id,
+    required this.postId,
+    required this.name,
     required this.email,
-    required this.jurusan,
-    required this.angkatan,
-    this.status = 'aktif',
+    required this.body,
   });
 
   factory MahasiswaModel.fromJson(Map<String, dynamic> json) {
     return MahasiswaModel(
-      nama: json['nama'] ?? '',
-      nim: json['nim'] ?? '',
+      id: json['id'] ?? 0,
+      postId: json['postId'] ?? 0,
+      name: json['name'] ?? '',
       email: json['email'] ?? '',
-      jurusan: json['jurusan'] ?? '',
-      angkatan: json['angkatan'] ?? '',
-      status: json['status'] ?? 'aktif',
+      body: json['body'] ?? '',
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'nama': nama,
-    'nim': nim,
-    'email': email,
-    'jurusan': jurusan,
-    'angkatan': angkatan,
-    'status': status,
-  };
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'postId': postId,
+      'name': name,
+      'email': email,
+      'body': body,
+    };
+  }
 }
