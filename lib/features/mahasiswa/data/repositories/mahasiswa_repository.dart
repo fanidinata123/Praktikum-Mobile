@@ -1,44 +1,23 @@
-import 'dart:convert';
+import 'package:trying_flutter/core/network/dio_client.dart';
 import 'package:trying_flutter/features/mahasiswa/data/models/mahasiswa_model.dart';
-import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 
 class MahasiswaRepository {
-  // ─── Menggunakan HTTP ────────────────────────────────────────────────────────
-  Future<List<MahasiswaModel>> getMahasiswaListHttp() async {
-    final response = await http.get(
-      Uri.parse('https://jsonplaceholder.typicode.com/comments'),
-      headers: {'Accept': 'application/json'},
-    );
+  final DioClient _dioClient;
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      print(data); // Debug: Tampilkan data yang sudah di-decode
-      return data.map((json) => MahasiswaModel.fromJson(json)).toList();
-    } else {
-      print('Error: ${response.statusCode} - ${response.body}');
-      throw Exception('Gagal memuat data mahasiswa: ${response.statusCode}');
-    }
-  }
+  MahasiswaRepository({DioClient? dioClient})
+      : _dioClient = dioClient ?? DioClient();
 
-  // ─── Menggunakan DIO ─────────────────────────────────────────────────────────
-  Future<List<MahasiswaModel>> getMahasiswaListDio() async {
-    final dio = Dio();
-    final response = await dio.get(
-      'https://jsonplaceholder.typicode.com/comments',
-      options: Options(headers: {'Accept': 'application/json'}),
-    );
-
-    if (response.statusCode == 200) {
+  /// get data daftar mahasiswa dari API /comments
+  Future<List<MahasiswaModel>> getMahasiswaList() async {
+    try {
+      final Response response = await _dioClient.dio.get('/comments');
       final List<dynamic> data = response.data;
       return data.map((json) => MahasiswaModel.fromJson(json)).toList();
-    } else {
+    } on DioException catch (e) {
       throw Exception(
-          'Gagal memuat data mahasiswa (dio): ${response.statusCode}');
+        'Gagal memuat data mahasiswa: ${e.response?.statusCode} - ${e.message}',
+      );
     }
   }
-
-  // Default: pakai http
-  Future<List<MahasiswaModel>> getMahasiswaList() async =>
-      getMahasiswaListHttp();
 }

@@ -1,124 +1,252 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:trying_flutter/core/constants/app_constants.dart';
+import 'package:trying_flutter/features/mahasiswa/data/models/mahasiswa_model.dart';
 import 'package:trying_flutter/features/mahasiswa/presentation/providers/mahasiswa_provider.dart';
-import 'package:trying_flutter/features/mahasiswa/presentation/widgets/mahasiswa_widget.dart';
-
-final mahasiswaSearchProvider = StateProvider.autoDispose<String>((ref) => '');
 
 class MahasiswaPage extends ConsumerWidget {
   const MahasiswaPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(mahasiswaNotifierProvider);
-    final query = ref.watch(mahasiswaSearchProvider);
+    final mahasiswaState = ref.watch(mahasiswaNotifierProvider);
+    final savedMahasiswa = ref.watch(savedMahasiswaProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Data Mahasiswa'),
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(mahasiswaNotifierProvider),
+            tooltip: 'Refresh',
           ),
         ],
       ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              onChanged: (v) =>
-                  ref.read(mahasiswaSearchProvider.notifier).state = v,
-              decoration: InputDecoration(
-                hintText: 'Cari nama atau email...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12, horizontal: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFF667eea), width: 1.5),
-                ),
-              ),
-            ),
+          _SavedMahasiswaSection(savedMahasiswa: savedMahasiswa, ref: ref),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text('Daftar Mahasiswa',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           ),
-
-          // List
           Expanded(
-            child: state.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (e, s) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 56, color: Colors.red),
-                    const SizedBox(height: 12),
-                    Text('Error: ${e.toString()}',
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          ref.invalidate(mahasiswaNotifierProvider),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Coba Lagi'),
-                    ),
-                  ],
-                ),
-              ),
-              data: (list) {
-                final filtered = query.isEmpty
-                    ? list
-                    : list
-                        .where((m) =>
-                            m.name
-                                .toLowerCase()
-                                .contains(query.toLowerCase()) ||
-                            m.email
-                                .toLowerCase()
-                                .contains(query.toLowerCase()))
-                        .toList();
-
-                if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text('Tidak ditemukan',
-                        style: TextStyle(color: Colors.grey)),
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: () async =>
-                      ref.invalidate(mahasiswaNotifierProvider),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: filtered.length,
-                    itemBuilder: (ctx, i) {
-                      final colors = AppConstants.dashboardGradients[
-                          i % AppConstants.dashboardGradients.length];
-                      return MahasiswaCard(
-                        mahasiswa: filtered[i],
-                        gradientColors: colors,
-                      );
-                    },
+            child: mahasiswaState.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 8),
+                  Text('Gagal memuat data: ${error.toString()}', textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => ref.read(mahasiswaNotifierProvider.notifier).refresh(),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Coba Lagi'),
                   ),
-                );
-              },
+                ]),
+              ),
+              data: (list) => _MahasiswaListWithSave(
+                mahasiswaList: list,
+                onRefresh: () => ref.invalidate(mahasiswaNotifierProvider),
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Section data tersimpan
+class _SavedMahasiswaSection extends ConsumerWidget {
+  final AsyncValue<List<Map<String, String>>> savedMahasiswa;
+  final WidgetRef ref;
+  const _SavedMahasiswaSection({required this.savedMahasiswa, required this.ref});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.storage_rounded, size: 16),
+          const SizedBox(width: 6),
+          const Text('Data Tersimpan di Local Storage',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          const Spacer(),
+          savedMahasiswa.maybeWhen(
+            data: (users) => users.isNotEmpty
+                ? TextButton.icon(
+                    onPressed: () async {
+                      await ref.read(mahasiswaNotifierProvider.notifier).clearSavedMahasiswa();
+                      ref.invalidate(savedMahasiswaProvider);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Semua data tersimpan dihapus')));
+                      }
+                    },
+                    icon: const Icon(Icons.delete_sweep_outlined, size: 14, color: Colors.red),
+                    label: const Text('Hapus Semua', style: TextStyle(fontSize: 12, color: Colors.red)),
+                  )
+                : const SizedBox.shrink(),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        savedMahasiswa.when(
+          loading: () => const LinearProgressIndicator(),
+          error: (_, __) => const Text('Gagal membaca data tersimpan',
+              style: TextStyle(color: Colors.red, fontSize: 12)),
+          data: (users) {
+            if (users.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.grey.shade400),
+                  const SizedBox(width: 8),
+                  const Text('Belum ada data. Tap ikon 💾 untuk menyimpan.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ]),
+              );
+            }
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: users.length,
+                separatorBuilder: (_, __) => Divider(
+                    height: 1, color: Colors.green.shade100, indent: 12, endIndent: 12),
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  return ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: Colors.green.shade100,
+                      child: Text('${index + 1}',
+                          style: TextStyle(fontSize: 11, color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+                    ),
+                    title: Text(user['username'] ?? '-',
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(
+                      'ID: ${user['user_id']} • ${_formatDate(user['saved_at'] ?? '')}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                      onPressed: () async {
+                        await ref.read(mahasiswaNotifierProvider.notifier).removeSavedMahasiswa(user['user_id'] ?? '');
+                        ref.invalidate(savedMahasiswaProvider);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('${user['username']} dihapus')));
+                        }
+                      },
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ]),
+    );
+  }
+
+  String _formatDate(String isoString) {
+    if (isoString.isEmpty) return '-';
+    try {
+      final date = DateTime.parse(isoString);
+      return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute}';
+    } catch (e) {
+      return isoString;
+    }
+  }
+}
+
+// List mahasiswa dengan tombol save — RAPI
+class _MahasiswaListWithSave extends ConsumerWidget {
+  final List<MahasiswaModel> mahasiswaList;
+  final VoidCallback onRefresh;
+  const _MahasiswaListWithSave({required this.mahasiswaList, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      child: ListView.builder(
+        itemCount: mahasiswaList.length,
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        itemBuilder: (context, index) {
+          final mahasiswa = mahasiswaList[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 5),
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Nomor
+                  CircleAvatar(
+                    radius: 16,
+                    child: Text('${mahasiswa.id}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 12),
+                  // Info
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(mahasiswa.name,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Text(mahasiswa.email,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Text(mahasiswa.body,
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ]),
+                  ),
+                  // Tombol save
+                  IconButton(
+                    icon: const Icon(Icons.save, size: 18),
+                    tooltip: 'Simpan',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () async {
+                      await ref.read(mahasiswaNotifierProvider.notifier).saveSelectedMahasiswa(mahasiswa);
+                      ref.invalidate(savedMahasiswaProvider);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('${mahasiswa.name} berhasil disimpan'),
+                          duration: const Duration(seconds: 2),
+                        ));
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
